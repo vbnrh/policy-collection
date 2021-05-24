@@ -1,0 +1,108 @@
+# This policy verifies the installation of the official version of
+# the OpenShift Data Foundation Operator on the managed clusters.
+#
+# If set to "enforce" it'll install the operator.
+apiVersion: policy.open-cluster-management.io/v1
+kind: Policy
+metadata:
+  name: policy-odf-operator
+  annotations:
+    policy.open-cluster-management.io/standards: NIST SP 800-53
+    policy.open-cluster-management.io/categories: CM Configuration Management
+    policy.open-cluster-management.io/controls: CM-2 Baseline Configuration
+spec:
+  remediationAction: inform
+  disabled: false
+  policy-templates:
+    - objectDefinition:
+        apiVersion: policy.open-cluster-management.io/v1
+        kind: ConfigurationPolicy
+        metadata:
+          name: odf-operator-namespace
+        spec:
+          remediationAction: inform
+          severity: high
+          namespaceSelector:
+            exclude: ["*"]
+            include: ["openshift-storage"]
+          object-templates:
+            - complianceType: musthave
+              objectDefinition:
+                apiVersion: v1
+                kind: Namespace
+                metadata:
+                  name: openshift-storage
+                  labels:
+                    openshift.io/cluster-monitoring: "true"
+    - objectDefinition:
+        apiVersion: policy.open-cluster-management.io/v1
+        kind: ConfigurationPolicy
+        metadata:
+          name: odf-operator-operatorgroup
+        spec:
+          remediationAction: inform
+          severity: high
+          namespaceSelector:
+            exclude: ["*"]
+            include: ["openshift-storage"]
+          object-templates:
+            - complianceType: musthave
+              objectDefinition:
+                apiVersion: operators.coreos.com/v1
+                kind: OperatorGroup
+                metadata:
+                  name: odf-operator-operatorgroup
+                  namespace: openshift-storage
+                spec:
+                  targetNamespaces:
+                      - openshift-storage
+    - objectDefinition:
+        apiVersion: policy.open-cluster-management.io/v1
+        kind: ConfigurationPolicy
+        metadata:
+          name: odf-operator-subscription
+        spec:
+          remediationAction: inform
+          severity: high
+          namespaceSelector:
+            exclude: ["*"]
+            include: ["openshift-storage"]
+          object-templates:
+            - complianceType: musthave
+              objectDefinition:
+                apiVersion: operators.coreos.com/v1alpha1
+                kind: Subscription
+                metadata:
+                  name: odf-operator-subscription
+                  namespace: openshift-storage
+                spec:
+                  name: ocs-operator
+                  channel: stable-4.7
+                  installPlanApproval: Automatic
+                  source: redhat-operators
+                  sourceNamespace: openshift-marketplace
+---
+apiVersion: policy.open-cluster-management.io/v1
+kind: PlacementBinding
+metadata:
+  name: binding-policy-odf-operator
+placementRef:
+  name: placement-policy-odf-operator
+  kind: PlacementRule
+  apiGroup: apps.open-cluster-management.io
+subjects:
+- name: policy-odf-operator
+  kind: Policy
+  apiGroup: policy.open-cluster-management.io
+---
+apiVersion: apps.open-cluster-management.io/v1
+kind: PlacementRule
+metadata:
+  name: placement-policy-odf-operator
+spec:
+  clusterConditions:
+  - status: "True"
+    type: ManagedClusterConditionAvailable
+  clusterSelector:
+    matchExpressions:
+      - {key: vendor, operator: In, values: ["OpenShift"]}

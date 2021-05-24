@@ -1,0 +1,83 @@
+# This policy verifies the enablement of the OpenShift Data Foundation
+# Disaster Recovery service on hub and managed clusters.
+#
+# If set to "enforce" it'll enable DR services in managed clusters.
+apiVersion: policy.open-cluster-management.io/v1
+kind: Policy
+metadata:
+  name: policy-odf-enable-replication
+  annotations:
+    policy.open-cluster-management.io/standards: NIST SP 800-53
+    policy.open-cluster-management.io/categories: CM Configuration Management
+    policy.open-cluster-management.io/controls: CM-6 Configuration Settings
+spec:
+  remediationAction: inform
+  disabled: false
+  policy-templates:
+    - objectDefinition:
+        apiVersion: policy.open-cluster-management.io/v1
+        kind: ConfigurationPolicy
+        metadata:
+          name: odf-operator-namespace
+        spec:
+          remediationAction: inform
+          severity: high
+          namespaceSelector:
+            exclude: ["*"]
+            include: ["openshift-storage"]
+          object-templates:
+            - complianceType: musthave
+              objectDefinition:
+                apiVersion: v1
+                kind: Namespace
+                metadata:
+                  name: openshift-storage
+                  labels:
+                    openshift.io/cluster-monitoring: "true"
+    - objectDefinition:
+        apiVersion: policy.open-cluster-management.io/v1
+        kind: ConfigurationPolicy
+        metadata:
+          name: odf-operator-configuration
+        spec:
+          remediationAction: inform
+          severity: high
+          namespaceSelector:
+            exclude: ["*"]
+            include: ["openshift-storage"]
+          object-templates:
+            - complianceType: musthave
+              objectDefinition:
+                kind: ConfigMap
+                apiVersion: v1
+                metadata:
+                  name: rook-ceph-operator-config
+                  namespace: openshift-storage
+                data:
+                  CSI_ENABLE_OMAP_GENERATOR: "true"
+                  CSI_ENABLE_VOLUME_REPLICATION: "true"
+---
+apiVersion: policy.open-cluster-management.io/v1
+kind: PlacementBinding
+metadata:
+  name: binding-policy-odf-enable-replication
+placementRef:
+  name: placement-policy-odf-enable-replication
+  kind: PlacementRule
+  apiGroup: apps.open-cluster-management.io
+subjects:
+- name: policy-odf-enable-replication
+  kind: Policy
+  apiGroup: policy.open-cluster-management.io
+---
+apiVersion: apps.open-cluster-management.io/v1
+kind: PlacementRule
+metadata:
+  name: placement-policy-odf-enable-replication
+spec:
+  clusterConditions:
+  - status: "True"
+    type: ManagedClusterConditionAvailable
+  clusterSelector:
+    matchExpressions:
+      - {key: vendor, operator: In, values: ["OpenShift"]}
