@@ -1,0 +1,109 @@
+# This policy verifies the installation of the official version of
+# the OpenShift Data Foundation Operator on the managed clusters.
+#
+# If set to "enforce" it'll install the operator.
+apiVersion: policy.open-cluster-management.io/v1
+kind: Policy
+metadata:
+  name: policy-lso-operator
+  namespace: open-cluster-management
+  annotations:
+    policy.open-cluster-management.io/standards: NIST SP 800-53
+    policy.open-cluster-management.io/categories: CM Configuration Management
+    policy.open-cluster-management.io/controls: CM-2 Baseline Configuration
+spec:
+  remediationAction: inform
+  disabled: false
+  policy-templates:
+     - objectDefinition:
+        apiVersion: policy.open-cluster-management.io/v1
+        kind: ConfigurationPolicy
+        metadata:
+          name: lso-operator-namespace
+        spec:
+          remediationAction: inform
+          severity: high
+          namespaceSelector:
+            exclude: ["*"]
+            include: ["openshift-local-storage"]
+          object-templates:
+            - complianceType: musthave
+              objectDefinition:
+                apiVersion: v1
+                kind: Namespace
+                metadata:
+                  name: openshift-local-storage
+                  labels:
+                    openshift.io/cluster-monitoring: "true"
+    - objectDefinition:
+        apiVersion: policy.open-cluster-management.io/v1
+        kind: ConfigurationPolicy
+        metadata:
+          name: lso-operator-operatorgroup
+        spec:
+          remediationAction: inform
+          severity: high
+          namespaceSelector:
+            exclude: ["*"]
+            include: ["openshift-local-storage"]
+          object-templates:
+            - complianceType: musthave
+              objectDefinition:
+                apiVersion: operators.coreos.com/v1alpha2
+                kind: OperatorGroup
+                metadata:
+                  name: local-operator-group
+                  namespace: openshift-local-storage
+                spec:
+                  targetNamespaces:
+                      - openshift-local-storage
+    - objectDefinition:
+        apiVersion: policy.open-cluster-management.io/v1
+        kind: ConfigurationPolicy
+        metadata:
+          name: lso-operator-subscription
+        spec:
+          remediationAction: inform
+          severity: high
+          namespaceSelector:
+            exclude: ["*"]
+            include: ["openshift-local-storage"]
+          object-templates:
+            - complianceType: musthave
+              objectDefinition:
+                apiVersion: operators.coreos.com/v1alpha1
+                kind: Subscription
+                metadata:
+                  name: local-storage-operator
+                  namespace: openshift-local-storage
+                spec:
+                  name: local-storage-operator
+                  channel: "4.7"
+                  installPlanApproval: Automatic
+                  source: redhat-operators
+                  sourceNamespace: openshift-marketplace
+---
+apiVersion: policy.open-cluster-management.io/v1
+kind: PlacementBinding
+metadata:
+  name: binding-policy-lso-operator
+placementRef:
+  name: placement-policy-lso-operator
+  kind: PlacementRule
+  apiGroup: apps.open-cluster-management.io
+subjects:
+- name: policy-lso-operator
+  kind: Policy
+  apiGroup: policy.open-cluster-management.io
+---
+apiVersion: apps.open-cluster-management.io/v1
+kind: PlacementRule
+metadata:
+  name: placement-policy-lso-operator
+spec:
+  clusterConditions:
+  - status: "True"
+    type: ManagedClusterConditionAvailable
+  clusterSelector:
+    matchExpressions:
+      - {key: vendor, operator: In, values: ["OpenShift"]}

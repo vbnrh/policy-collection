@@ -18,26 +18,6 @@ spec:
         apiVersion: policy.open-cluster-management.io/v1
         kind: ConfigurationPolicy
         metadata:
-          name: odf-operator-namespace
-        spec:
-          remediationAction: inform
-          severity: high
-          namespaceSelector:
-            exclude: ["*"]
-            include: ["openshift-storage"]
-          object-templates:
-            - complianceType: musthave
-              objectDefinition:
-                apiVersion: v1
-                kind: Namespace
-                metadata:
-                  name: openshift-storage
-                  labels:
-                    openshift.io/cluster-monitoring: "true"
-    - objectDefinition:
-        apiVersion: policy.open-cluster-management.io/v1
-        kind: ConfigurationPolicy
-        metadata:
           name: odf-operator-configuration
         spec:
           remediationAction: inform

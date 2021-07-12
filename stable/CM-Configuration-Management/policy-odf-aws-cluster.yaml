@@ -1,0 +1,92 @@
+# This policy verifies the installation of the OpenShift Data Foundation
+# Cluster on the managed clusters.
+#
+# If set to "enforce" it'll install the cluster.
+apiVersion: policy.open-cluster-management.io/v1
+kind: Policy
+metadata:
+  name: policy-odf-aws-cluster
+  annotations:
+    policy.open-cluster-management.io/standards: NIST SP 800-53
+    policy.open-cluster-management.io/categories: CM Configuration Management
+    policy.open-cluster-management.io/controls: CM-2 Baseline Configuration
+spec:
+  remediationAction: inform
+  disabled: false
+  policy-templates:
+    - objectDefinition:
+        apiVersion: policy.open-cluster-management.io/v1
+        kind: ConfigurationPolicy
+        metadata:
+          name: odf-storage-system
+        spec:
+          remediationAction: inform
+          severity: high
+          namespaceSelector:
+            exclude: ["*"]
+            include: ["openshift-storage"]
+          object-templates:
+            - complianceType: mustonlyhave
+              objectDefinition:
+                apiVersion: ocs.openshift.io/v1
+                kind: StorageCluster
+                metadata:
+                  namespace: openshift-storage
+                  name: ocs-storagecluster
+                spec:
+                  labelSelector:
+                    matchExpressions:
+                      - key: node-role.kubernetes.io/worker
+                        operator: In
+                        values:
+                        - ""
+                  manageNodes: false
+                  monPVCTemplate:
+                    spec:
+                      storageClassName: gp2
+                      accessModes:
+                        - ReadWriteOnce
+                      resources:
+                        requests:
+                          storage: 10Gi
+                  storageDeviceSets:
+                    - name: storage-deviceset
+                      count: 1
+                      replica: 3
+                      resources: {}
+                      placement: {}
+                      dataPVCTemplate:
+                        spec:
+                          storageClassName: gp2
+                          accessModes:
+                            - ReadWriteOnce
+                          volumeMode: Block
+                          resources:
+                            requests:
+                              storage: 2Ti
+                      portable: true
+---
+apiVersion: policy.open-cluster-management.io/v1
+kind: PlacementBinding
+metadata:
+  name: binding-policy-odf-aws-cluster
+placementRef:
+  name: placement-policy-odf-aws-cluster
+  kind: PlacementRule
+  apiGroup: apps.open-cluster-management.io
+subjects:
+- name: policy-odf-aws-cluster
+  kind: Policy
+  apiGroup: policy.open-cluster-management.io
+---
+apiVersion: apps.open-cluster-management.io/v1
+kind: PlacementRule
+metadata:
+  name: placement-policy-odf-aws-cluster
+spec:
+  clusterConditions:
+  - status: "True"
+    type: ManagedClusterConditionAvailable
+  clusterSelector:
+    matchExpressions:
+      - {key: cloud, operator: In, values: ["Amazon"]}

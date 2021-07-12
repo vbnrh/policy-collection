@@ -5,7 +5,7 @@
 apiVersion: policy.open-cluster-management.io/v1
 kind: Policy
 metadata:
-  name: policy-odf-cluster
+  name: policy-odf-gcp-cluster
   annotations:
     policy.open-cluster-management.io/standards: NIST SP 800-53
     policy.open-cluster-management.io/categories: CM Configuration Management
@@ -14,26 +14,6 @@ spec:
   remediationAction: inform
   disabled: false
   policy-templates:
-    - objectDefinition:
-        apiVersion: policy.open-cluster-management.io/v1
-        kind: ConfigurationPolicy
-        metadata:
-          name: odf-operator-namespace
-        spec:
-          remediationAction: inform
-          severity: high
-          namespaceSelector:
-            exclude: ["*"]
-            include: ["openshift-storage"]
-          object-templates:
-            - complianceType: musthave
-              objectDefinition:
-                apiVersion: v1
-                kind: Namespace
-                metadata:
-                  name: openshift-storage
-                  labels:
-                    openshift.io/cluster-monitoring: "true"
     - objectDefinition:
         apiVersion: policy.open-cluster-management.io/v1
         kind: ConfigurationPolicy
@@ -63,7 +43,7 @@ spec:
                   manageNodes: false
                   monPVCTemplate:
                     spec:
-                      storageClassName: gp2
+                      storageClassName: standard
                       accessModes:
                         - ReadWriteOnce
                       resources:
@@ -77,7 +57,7 @@ spec:
                       placement: {}
                       dataPVCTemplate:
                         spec:
-                          storageClassName: gp2
+                          storageClassName: standard
                           accessModes:
                             - ReadWriteOnce
                           volumeMode: Block
@@ -89,24 +69,24 @@ spec:
 apiVersion: policy.open-cluster-management.io/v1
 kind: PlacementBinding
 metadata:
-  name: binding-policy-odf-cluster
+  name: binding-policy-odf-gcp-cluster
 placementRef:
-  name: placement-policy-odf-cluster
+  name: placement-policy-odf-gcp-cluster
   kind: PlacementRule
   apiGroup: apps.open-cluster-management.io
 subjects:
-- name: policy-odf-cluster
+- name: policy-odf-gcp-cluster
   kind: Policy
   apiGroup: policy.open-cluster-management.io
 ---
 apiVersion: apps.open-cluster-management.io/v1
 kind: PlacementRule
 metadata:
-  name: placement-policy-odf-cluster
+  name: placement-policy-odf-gcp-cluster
 spec:
   clusterConditions:
   - status: "True"
     type: ManagedClusterConditionAvailable
   clusterSelector:
     matchExpressions:
-      - {key: cloud, operator: In, values: ["Amazon"]}
+      - {key: cloud, operator: In, values: ["Google"]}
